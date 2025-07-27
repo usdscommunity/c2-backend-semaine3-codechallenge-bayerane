@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # Base de données MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: library_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: library_management
+      MYSQL_USER: library_user
+      MYSQL_PASSWORD: library_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database-setup.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - library_network
+
+  # Application NestJS
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: library_api
+    restart: always
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: library_user
+      DB_PASSWORD: library_password
+      DB_DATABASE: library_management
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql
+    networks:
+      - library_network
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+
+  # Interface d'administration MySQL (optionnel)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: library_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: library_user
+      PMA_PASSWORD: library_password
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - library_network
+
+volumes:
+  mysql_data:
+
+networks:  
+  library_network:
+    driver: bridge
